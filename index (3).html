@@ -1,0 +1,1208 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>麻雀精算</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+    html, body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', sans-serif;
+      background: #1a1a2e;
+      color: #eee;
+      min-height: 100vh;
+      font-size: 16px;
+      overflow-x: hidden;
+    }
+
+    /* =============== ヘッダー（累計固定） =============== */
+    .header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: #0f3460;
+      padding: 8px 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+    .header-title {
+      text-align: center;
+      font-size: 1rem;
+      color: #00d4aa;
+      margin-bottom: 6px;
+    }
+    .header-scores {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 4px;
+    }
+    .header-score {
+      text-align: center;
+      background: #16213e;
+      border-radius: 6px;
+      padding: 6px 2px;
+    }
+    .header-score .name {
+      font-size: 0.7rem;
+      color: #888;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .header-score .amount {
+      font-size: 1rem;
+      font-weight: bold;
+    }
+
+    /* =============== メインコンテンツ =============== */
+    .main {
+      padding: 12px;
+      padding-bottom: 80px;
+    }
+
+    /* =============== セクション =============== */
+    .section {
+      background: #16213e;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 12px;
+    }
+    .section-title {
+      font-size: 0.9rem;
+      color: #00d4aa;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .section-title::before {
+      content: '';
+      width: 4px;
+      height: 16px;
+      background: #00d4aa;
+      border-radius: 2px;
+    }
+
+    /* =============== 設定エリア =============== */
+    .settings-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+    }
+    .settings-grid.full {
+      grid-template-columns: 1fr;
+    }
+    .setting-item {
+      background: #0f0f23;
+      border-radius: 8px;
+      padding: 12px;
+    }
+    .setting-item label {
+      display: block;
+      font-size: 0.75rem;
+      color: #888;
+      margin-bottom: 6px;
+    }
+    .setting-item input,
+    .setting-item select {
+      width: 100%;
+      background: #1a1a2e;
+      border: 1px solid #333;
+      color: #fff;
+      padding: 10px;
+      border-radius: 6px;
+      font-size: 1rem;
+    }
+    .setting-item input:focus,
+    .setting-item select:focus {
+      outline: none;
+      border-color: #00d4aa;
+    }
+
+    /* =============== ボタン =============== */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 12px 20px;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: transform 0.1s, opacity 0.1s;
+      min-height: 48px;
+    }
+    .btn:active {
+      transform: scale(0.97);
+      opacity: 0.9;
+    }
+    .btn-primary {
+      background: #00d4aa;
+      color: #1a1a2e;
+    }
+    .btn-secondary {
+      background: #444;
+      color: #fff;
+    }
+    .btn-danger {
+      background: #e74c3c;
+      color: #fff;
+    }
+    .btn-block {
+      width: 100%;
+    }
+    .btn-group {
+      display: flex;
+      gap: 8px;
+    }
+    .btn-group .btn {
+      flex: 1;
+    }
+
+    /* =============== 半荘カード =============== */
+    .hand-card {
+      background: #0f0f23;
+      border-radius: 10px;
+      padding: 12px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: transform 0.1s, background 0.1s;
+      border: 2px solid transparent;
+    }
+    .hand-card:active {
+      transform: scale(0.98);
+    }
+    .hand-card.has-data {
+      border-color: #00d4aa33;
+    }
+    .hand-card.warning {
+      border-color: #e74c3c;
+      background: #2a1a1a;
+    }
+    .hand-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .hand-card-num {
+      font-size: 1.1rem;
+      font-weight: bold;
+      color: #00d4aa;
+    }
+    .hand-card-status {
+      font-size: 0.75rem;
+      color: #888;
+    }
+    .hand-card-status.warning {
+      color: #e74c3c;
+    }
+    .hand-card-scores {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+    }
+    .hand-card-score {
+      text-align: center;
+    }
+    .hand-card-score .name {
+      font-size: 0.65rem;
+      color: #666;
+    }
+    .hand-card-score .points {
+      font-size: 0.85rem;
+      color: #aaa;
+    }
+    .hand-card-score .balance {
+      font-size: 0.75rem;
+      font-weight: bold;
+    }
+
+    /* ブロック区切り */
+    .block-divider {
+      text-align: center;
+      padding: 8px;
+      margin: 12px 0;
+      font-size: 0.8rem;
+      color: #00d4aa;
+      background: #0a2540;
+      border-radius: 6px;
+    }
+    .block-divider .seats {
+      font-size: 0.7rem;
+      color: #888;
+      margin-top: 4px;
+    }
+
+    /* =============== チップ入力 =============== */
+    .chip-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+    }
+    .chip-item {
+      background: #0f0f23;
+      border-radius: 8px;
+      padding: 12px;
+    }
+    .chip-item label {
+      display: block;
+      font-size: 0.8rem;
+      color: #888;
+      margin-bottom: 6px;
+    }
+    .chip-item input {
+      width: 100%;
+      background: #1a1a2e;
+      border: 1px solid #333;
+      color: #fff;
+      padding: 12px;
+      border-radius: 6px;
+      font-size: 1.2rem;
+      text-align: center;
+    }
+    .chip-diff {
+      text-align: center;
+      font-size: 0.8rem;
+      margin-top: 4px;
+    }
+
+    /* =============== 最終集計 =============== */
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+    }
+    .summary-card {
+      background: #0f0f23;
+      border-radius: 10px;
+      padding: 14px;
+      text-align: center;
+    }
+    .summary-card .name {
+      font-size: 0.9rem;
+      font-weight: bold;
+      color: #00d4aa;
+      margin-bottom: 8px;
+    }
+    .summary-card .detail {
+      font-size: 0.75rem;
+      color: #888;
+      margin: 4px 0;
+    }
+    .summary-card .total {
+      font-size: 1.4rem;
+      font-weight: bold;
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid #333;
+    }
+
+    /* =============== モーダル =============== */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.8);
+      z-index: 200;
+      align-items: flex-end;
+      justify-content: center;
+    }
+    .modal-overlay.active {
+      display: flex;
+    }
+    .modal {
+      background: #16213e;
+      width: 100%;
+      max-width: 500px;
+      max-height: 90vh;
+      border-radius: 20px 20px 0 0;
+      padding: 20px;
+      padding-bottom: 30px;
+      overflow-y: auto;
+      animation: slideUp 0.2s ease-out;
+    }
+    @keyframes slideUp {
+      from { transform: translateY(100%); }
+      to { transform: translateY(0); }
+    }
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    .modal-title {
+      font-size: 1.2rem;
+      font-weight: bold;
+      color: #00d4aa;
+    }
+    .modal-close {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: #333;
+      border: none;
+      color: #fff;
+      font-size: 1.2rem;
+      cursor: pointer;
+    }
+
+    /* 点数入力モーダル */
+    .point-input-group {
+      margin-bottom: 16px;
+    }
+    .point-input-label {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .point-input-label .name {
+      font-size: 1rem;
+      font-weight: bold;
+    }
+    .point-input-label .seat {
+      font-size: 0.8rem;
+      color: #00d4aa;
+    }
+    .point-input {
+      width: 100%;
+      background: #0f0f23;
+      border: 2px solid #333;
+      color: #fff;
+      padding: 16px;
+      border-radius: 10px;
+      font-size: 1.5rem;
+      text-align: center;
+    }
+    .point-input:focus {
+      outline: none;
+      border-color: #00d4aa;
+    }
+    .tobi-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 8px;
+      padding: 8px;
+      background: #1a1a2e;
+      border-radius: 6px;
+      font-size: 0.85rem;
+    }
+    .tobi-label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: #aaa;
+    }
+    .tobi-label input[type="checkbox"] {
+      width: 20px;
+      height: 20px;
+      accent-color: #e74c3c;
+    }
+    .tobi-label select {
+      background: #0f0f23;
+      border: 1px solid #333;
+      color: #fff;
+      padding: 6px 8px;
+      border-radius: 4px;
+      font-size: 0.85rem;
+    }
+    .point-total {
+      text-align: center;
+      padding: 12px;
+      margin: 16px 0;
+      background: #0f0f23;
+      border-radius: 8px;
+      font-size: 1rem;
+    }
+    .point-total.valid {
+      color: #00d4aa;
+    }
+    .point-total.invalid {
+      color: #e74c3c;
+    }
+
+    /* 席順モーダル */
+    .seat-input-group {
+      margin-bottom: 12px;
+    }
+    .seat-input-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      background: #0f0f23;
+      border-radius: 8px;
+    }
+    .seat-wind {
+      font-size: 1.2rem;
+      font-weight: bold;
+      color: #00d4aa;
+      width: 30px;
+    }
+    .seat-select {
+      flex: 1;
+      background: #1a1a2e;
+      border: 1px solid #333;
+      color: #fff;
+      padding: 12px;
+      border-radius: 6px;
+      font-size: 1rem;
+    }
+
+    /* =============== カラー =============== */
+    .positive { color: #00d4aa; }
+    .negative { color: #e74c3c; }
+    .zero { color: #888; }
+
+    /* =============== フッターナビ =============== */
+    .footer-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: #0f3460;
+      padding: 8px 12px;
+      padding-bottom: max(8px, env(safe-area-inset-bottom));
+      display: flex;
+      justify-content: space-around;
+      box-shadow: 0 -2px 8px rgba(0,0,0,0.3);
+      z-index: 100;
+    }
+    .nav-btn {
+      flex: 1;
+      background: none;
+      border: none;
+      color: #888;
+      font-size: 0.7rem;
+      padding: 8px 4px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+    .nav-btn.active {
+      color: #00d4aa;
+    }
+    .nav-btn-icon {
+      font-size: 1.3rem;
+    }
+
+    /* =============== タブコンテンツ =============== */
+    .tab-content {
+      display: none;
+    }
+    .tab-content.active {
+      display: block;
+    }
+
+    /* =============== 空状態 =============== */
+    .empty-hint {
+      text-align: center;
+      padding: 30px;
+      color: #666;
+    }
+    .empty-hint-icon {
+      font-size: 2rem;
+      margin-bottom: 10px;
+    }
+  </style>
+</head>
+<body>
+  <!-- ヘッダー（累計表示） -->
+  <header class="header">
+    <div class="header-title">🀄 累計収支（チップ抜き）</div>
+    <div class="header-scores" id="headerScores"></div>
+  </header>
+
+  <!-- メインコンテンツ -->
+  <main class="main">
+    <!-- タブ：半荘入力 -->
+    <div id="tabHands" class="tab-content active">
+      <div id="handCards"></div>
+    </div>
+
+    <!-- タブ：チップ -->
+    <div id="tabChips" class="tab-content">
+      <div class="section">
+        <div class="section-title">チップ入力</div>
+        <p style="font-size:0.8rem;color:#888;margin-bottom:12px;">最終枚数を入力（20枚スタート、1枚=500円）</p>
+        <div class="chip-grid" id="chipInputs"></div>
+      </div>
+    </div>
+
+    <!-- タブ：集計 -->
+    <div id="tabSummary" class="tab-content">
+      <div class="section">
+        <div class="section-title">最終集計</div>
+        <div class="summary-grid" id="summaryGrid"></div>
+      </div>
+    </div>
+
+    <!-- タブ：設定 -->
+    <div id="tabSettings" class="tab-content">
+      <div class="section">
+        <div class="section-title">プレイヤー名</div>
+        <div class="settings-grid">
+          <div class="setting-item">
+            <label>プレイヤー1</label>
+            <input type="text" id="name0" placeholder="A">
+          </div>
+          <div class="setting-item">
+            <label>プレイヤー2</label>
+            <input type="text" id="name1" placeholder="B">
+          </div>
+          <div class="setting-item">
+            <label>プレイヤー3</label>
+            <input type="text" id="name2" placeholder="C">
+          </div>
+          <div class="setting-item">
+            <label>プレイヤー4</label>
+            <input type="text" id="name3" placeholder="D">
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">半荘数</div>
+        <div class="settings-grid full">
+          <div class="setting-item">
+            <label>今日の半荘数</label>
+            <select id="handCountSelect"></select>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">席順設定</div>
+        <p style="font-size:0.8rem;color:#888;margin-bottom:12px;">各ブロックをタップして編集</p>
+        <div id="seatBlockList"></div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">リセット</div>
+        <div class="btn-group">
+          <button class="btn btn-secondary" onclick="startNewDay()">新しい日</button>
+          <button class="btn btn-danger" onclick="fullReset()">全削除</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- フッターナビ -->
+  <nav class="footer-nav">
+    <button class="nav-btn active" onclick="switchTab('tabHands', this)" data-tab="tabHands">
+      <span class="nav-btn-icon">📝</span>
+      <span>半荘</span>
+    </button>
+    <button class="nav-btn" onclick="switchTab('tabChips', this)" data-tab="tabChips">
+      <span class="nav-btn-icon">🪙</span>
+      <span>チップ</span>
+    </button>
+    <button class="nav-btn" onclick="switchTab('tabSummary', this)" data-tab="tabSummary">
+      <span class="nav-btn-icon">💰</span>
+      <span>集計</span>
+    </button>
+    <button class="nav-btn" onclick="switchTab('tabSettings', this)" data-tab="tabSettings">
+      <span class="nav-btn-icon">⚙️</span>
+      <span>設定</span>
+    </button>
+  </nav>
+
+  <!-- 点数入力モーダル -->
+  <div class="modal-overlay" id="pointModal">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title" id="pointModalTitle">半荘1</span>
+        <button class="modal-close" onclick="closePointModal()">×</button>
+      </div>
+      <div id="pointInputs"></div>
+      <div class="point-total" id="pointTotal">合計: 0点</div>
+      <button class="btn btn-primary btn-block" onclick="savePoints()">保存</button>
+    </div>
+  </div>
+
+  <!-- 席順入力モーダル -->
+  <div class="modal-overlay" id="seatModal">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title" id="seatModalTitle">ブロック1 席順</span>
+        <button class="modal-close" onclick="closeSeatModal()">×</button>
+      </div>
+      <div id="seatInputs"></div>
+      <button class="btn btn-primary btn-block" onclick="saveSeats()" style="margin-top:16px;">保存</button>
+    </div>
+  </div>
+
+  <script>
+    // =============== 定数 ===============
+    const DEFAULT_NAMES = ['A', 'B', 'C', 'D'];
+    const BASE_POINT = 30000; // 30000点返し
+    const TOTAL_POINT = 100000;
+    const CHIP_START = 20;
+    const CHIP_VALUE = 500;
+    const UMA = [3000, 1000, -1000, -3000]; // 1着+3000円, 2着+1000円, 3着-1000円, 4着-3000円
+    const TOBI_VALUE = 1000; // 飛び1人あたり1000円
+    const WINDS = ['東', '南', '西', '北'];
+
+    // 丸め関数：30000点側に寄せる
+    function roundTo30000(score) {
+      if (score >= 30000) {
+        return Math.floor(score / 1000) * 1000;
+      } else {
+        return Math.ceil(score / 1000) * 1000;
+      }
+    }
+
+    // =============== State ===============
+    let state = {
+      names: [...DEFAULT_NAMES],
+      handCount: 8,
+      hands: [],
+      seatBlocks: [],
+      chips: [20, 20, 20, 20]
+    };
+
+    let currentEditingHand = null;
+    let currentEditingBlock = null;
+    let tempPoints = [null, null, null, null];
+    let tempTobiOut = [0, 0, 0, 0];
+    let tempTobiIn = [0, 0, 0, 0];
+    let tempSeats = [0, 1, 2, 3];
+
+    // =============== Storage ===============
+    function loadState() {
+      try {
+        const saved = localStorage.getItem('mahjongSettlement');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          state.names = parsed.names || [...DEFAULT_NAMES];
+          state.handCount = parsed.handCount || 8;
+          state.hands = parsed.hands || [];
+          state.seatBlocks = parsed.seatBlocks || [];
+          state.chips = parsed.chips || [20, 20, 20, 20];
+        }
+      } catch (e) {
+        console.error('Load error:', e);
+      }
+      ensureDataStructure();
+    }
+
+    function saveState() {
+      try {
+        localStorage.setItem('mahjongSettlement', JSON.stringify(state));
+      } catch (e) {
+        console.error('Save error:', e);
+      }
+    }
+
+    function ensureDataStructure() {
+      const blockCount = Math.ceil(state.handCount / 4);
+      
+      while (state.hands.length < state.handCount) {
+        state.hands.push({ 
+          points: [null, null, null, null],
+          tobiOut: [0, 0, 0, 0],
+          tobiIn: [0, 0, 0, 0]
+        });
+      }
+      // 既存データに飛び情報がない場合は追加
+      state.hands.forEach(h => {
+        if (!h.tobiOut) h.tobiOut = [0, 0, 0, 0];
+        if (!h.tobiIn) h.tobiIn = [0, 0, 0, 0];
+      });
+      if (state.hands.length > state.handCount) {
+        state.hands = state.hands.slice(0, state.handCount);
+      }
+
+      while (state.seatBlocks.length < blockCount) {
+        state.seatBlocks.push([0, 1, 2, 3]);
+      }
+      if (state.seatBlocks.length > blockCount) {
+        state.seatBlocks = state.seatBlocks.slice(0, blockCount);
+      }
+
+      if (!state.chips || state.chips.length !== 4) {
+        state.chips = [20, 20, 20, 20];
+      }
+    }
+
+    // =============== Computation ===============
+    function computeHand(handIndex) {
+      const hand = state.hands[handIndex];
+      if (!hand) return null;
+
+      const points = hand.points.map(p => (p === null || p === '') ? 0 : parseInt(p, 10) || 0);
+      const total = points.reduce((a, b) => a + b, 0);
+      const hasData = hand.points.some(p => p !== null && p !== '');
+      const isValid = total === TOTAL_POINT;
+
+      // 丸め後の点数でテンピン計算
+      const roundedPoints = points.map(p => roundTo30000(p));
+      const tenpin = roundedPoints.map(p => (p - BASE_POINT) / 10);
+
+      const blockIndex = Math.floor(handIndex / 4);
+      const seatOrder = state.seatBlocks[blockIndex] || [0, 1, 2, 3];
+
+      const playerData = points.map((p, i) => ({
+        playerIndex: i,
+        points: p,
+        seatPriority: seatOrder.indexOf(i)
+      }));
+
+      playerData.sort((a, b) => {
+        if (b.points !== a.points) return b.points - a.points;
+        return a.seatPriority - b.seatPriority;
+      });
+
+      const ranks = new Array(4);
+      playerData.forEach((pd, rank) => {
+        ranks[pd.playerIndex] = rank;
+      });
+
+      const uma = ranks.map(r => UMA[r]);
+      
+      // 飛び計算
+      const tobiOut = hand.tobiOut || [0, 0, 0, 0];
+      const tobiIn = hand.tobiIn || [0, 0, 0, 0];
+      const tobi = tobiOut.map((out, i) => (out * TOBI_VALUE) - (tobiIn[i] * TOBI_VALUE));
+      
+      const handBalance = tenpin.map((t, i) => t + uma[i] + tobi[i]);
+
+      return { points, total, hasData, isValid, tenpin, ranks, uma, tobi, handBalance };
+    }
+
+    function computeAll() {
+      const results = [];
+      for (let i = 0; i < state.handCount; i++) {
+        results.push(computeHand(i));
+      }
+
+      const totals = [0, 0, 0, 0];
+      results.forEach(r => {
+        if (r && r.hasData && r.isValid) {
+          r.handBalance.forEach((b, i) => totals[i] += b);
+        }
+      });
+
+      const chipDiff = state.chips.map(c => (parseInt(c, 10) || CHIP_START) - CHIP_START);
+      const chipYen = chipDiff.map(d => d * CHIP_VALUE);
+      const finalTotals = totals.map((t, i) => t + chipYen[i]);
+
+      return { hands: results, runningTotals: totals, chipDiff, chipYen, finalTotals };
+    }
+
+    // =============== Tab Navigation ===============
+    function switchTab(tabId, btn) {
+      document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById(tabId).classList.add('active');
+      btn.classList.add('active');
+    }
+
+    // =============== Render ===============
+    function render() {
+      renderHeader();
+      renderHandCards();
+      renderChipInputs();
+      renderSummary();
+      renderSettings();
+    }
+
+    function renderHeader() {
+      const computed = computeAll();
+      const container = document.getElementById('headerScores');
+      container.innerHTML = state.names.map((n, i) => `
+        <div class="header-score">
+          <div class="name">${escapeHtml(n)}</div>
+          <div class="amount ${formatClass(computed.runningTotals[i])}">${formatYenShort(computed.runningTotals[i])}</div>
+        </div>
+      `).join('');
+    }
+
+    function renderHandCards() {
+      const computed = computeAll();
+      const container = document.getElementById('handCards');
+      const blockCount = Math.ceil(state.handCount / 4);
+      let html = '';
+
+      for (let b = 0; b < blockCount; b++) {
+        const startHand = b * 4;
+        const endHand = Math.min((b + 1) * 4, state.handCount);
+        const seats = state.seatBlocks[b] || [0, 1, 2, 3];
+
+        // ブロック区切り
+        const seatStr = state.names.map((_, pi) => {
+          const idx = seats.indexOf(pi);
+          return idx >= 0 ? WINDS[idx] : '-';
+        }).map((w, i) => `${state.names[i]}:${w}`).join(' ');
+
+        html += `
+          <div class="block-divider" onclick="openSeatModal(${b})">
+            ブロック${b + 1}（${startHand + 1}〜${endHand}半荘）▼
+            <div class="seats">${seatStr}</div>
+          </div>
+        `;
+
+        for (let h = startHand; h < endHand; h++) {
+          const result = computed.hands[h];
+          const hasData = result && result.hasData;
+          const isWarning = hasData && !result.isValid;
+
+          let cardClass = 'hand-card';
+          if (hasData) cardClass += ' has-data';
+          if (isWarning) cardClass += ' warning';
+
+          html += `
+            <div class="${cardClass}" onclick="openPointModal(${h})">
+              <div class="hand-card-header">
+                <span class="hand-card-num">${h + 1}半荘</span>
+                <span class="hand-card-status ${isWarning ? 'warning' : ''}">
+                  ${hasData ? (isWarning ? '⚠️ ' + result.total + '点' : '✓') : 'タップして入力'}
+                </span>
+              </div>
+              <div class="hand-card-scores">
+                ${state.names.map((n, i) => {
+                  const pts = state.hands[h]?.points[i];
+                  const ptsStr = pts !== null && pts !== '' ? pts.toLocaleString() : '-';
+                  const balStr = hasData && result.isValid ? formatYenShort(result.handBalance[i]) : '-';
+                  const balClass = hasData && result.isValid ? formatClass(result.handBalance[i]) : '';
+                  return `
+                    <div class="hand-card-score">
+                      <div class="name">${escapeHtml(n)}</div>
+                      <div class="points">${ptsStr}</div>
+                      <div class="balance ${balClass}">${balStr}</div>
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+            </div>
+          `;
+        }
+      }
+
+      container.innerHTML = html;
+    }
+
+    function renderChipInputs() {
+      const computed = computeAll();
+      const container = document.getElementById('chipInputs');
+      container.innerHTML = state.names.map((n, i) => {
+        const diff = computed.chipDiff[i];
+        const diffStr = diff >= 0 ? '+' + diff : diff;
+        const diffClass = formatClass(diff);
+        return `
+          <div class="chip-item">
+            <label>${escapeHtml(n)}</label>
+            <input type="number" 
+                   inputmode="numeric"
+                   value="${state.chips[i]}" 
+                   onchange="updateChip(${i}, this.value)"
+                   min="0">
+            <div class="chip-diff ${diffClass}">${diffStr}枚（${formatYenShort(computed.chipYen[i])}）</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderSummary() {
+      const computed = computeAll();
+      const container = document.getElementById('summaryGrid');
+      container.innerHTML = state.names.map((n, i) => `
+        <div class="summary-card">
+          <div class="name">${escapeHtml(n)}</div>
+          <div class="detail">半荘: ${formatYenShort(computed.runningTotals[i])}</div>
+          <div class="detail">チップ: ${formatYenShort(computed.chipYen[i])}</div>
+          <div class="total ${formatClass(computed.finalTotals[i])}">${formatYen(computed.finalTotals[i])}</div>
+        </div>
+      `).join('');
+    }
+
+    function renderSettings() {
+      // 名前
+      for (let i = 0; i < 4; i++) {
+        document.getElementById(`name${i}`).value = state.names[i];
+      }
+
+      // 半荘数セレクト
+      const select = document.getElementById('handCountSelect');
+      let options = '';
+      for (let i = 1; i <= 20; i++) {
+        options += `<option value="${i}" ${state.handCount === i ? 'selected' : ''}>${i}半荘</option>`;
+      }
+      select.innerHTML = options;
+
+      // 席順ブロックリスト
+      const blockCount = Math.ceil(state.handCount / 4);
+      const blockList = document.getElementById('seatBlockList');
+      let html = '';
+      for (let b = 0; b < blockCount; b++) {
+        const startHand = b * 4 + 1;
+        const endHand = Math.min((b + 1) * 4, state.handCount);
+        const seats = state.seatBlocks[b] || [0, 1, 2, 3];
+        const seatStr = WINDS.map((w, wi) => `${w}:${state.names[seats[wi]]}`).join(' ');
+        html += `
+          <div class="hand-card" onclick="openSeatModal(${b})" style="margin-bottom:8px;">
+            <div class="hand-card-header">
+              <span class="hand-card-num">ブロック${b + 1}</span>
+              <span class="hand-card-status">${startHand}〜${endHand}半荘</span>
+            </div>
+            <div style="font-size:0.85rem;color:#aaa;">${seatStr}</div>
+          </div>
+        `;
+      }
+      blockList.innerHTML = html;
+    }
+
+    // =============== Point Modal ===============
+    function openPointModal(handIndex) {
+      currentEditingHand = handIndex;
+      const hand = state.hands[handIndex];
+      tempPoints = hand ? [...hand.points] : [null, null, null, null];
+      tempTobiOut = hand && hand.tobiOut ? [...hand.tobiOut] : [0, 0, 0, 0];
+      tempTobiIn = hand && hand.tobiIn ? [...hand.tobiIn] : [0, 0, 0, 0];
+
+      const blockIndex = Math.floor(handIndex / 4);
+      const seats = state.seatBlocks[blockIndex] || [0, 1, 2, 3];
+
+      document.getElementById('pointModalTitle').textContent = `${handIndex + 1}半荘`;
+      
+      const container = document.getElementById('pointInputs');
+      container.innerHTML = state.names.map((n, i) => {
+        const seatIdx = seats.indexOf(i);
+        const wind = seatIdx >= 0 ? WINDS[seatIdx] : '-';
+        const val = tempPoints[i] !== null ? tempPoints[i] : '';
+        return `
+          <div class="point-input-group">
+            <div class="point-input-label">
+              <span class="name">${escapeHtml(n)}</span>
+              <span class="seat">${wind}家</span>
+            </div>
+            <input type="number" 
+                   class="point-input" 
+                   id="pointInput${i}"
+                   inputmode="numeric"
+                   value="${val}"
+                   placeholder="25000"
+                   oninput="updateTempPoint(${i}, this.value)">
+            <div class="tobi-row">
+              <label class="tobi-label">
+                <input type="checkbox" 
+                       id="tobiIn${i}" 
+                       ${tempTobiIn[i] ? 'checked' : ''}
+                       onchange="updateTempTobiIn(${i}, this.checked)">
+                <span>飛んだ</span>
+              </label>
+              <label class="tobi-label">
+                <span>飛ばした</span>
+                <select id="tobiOut${i}" onchange="updateTempTobiOut(${i}, this.value)">
+                  <option value="0" ${tempTobiOut[i] === 0 ? 'selected' : ''}>0人</option>
+                  <option value="1" ${tempTobiOut[i] === 1 ? 'selected' : ''}>1人</option>
+                  <option value="2" ${tempTobiOut[i] === 2 ? 'selected' : ''}>2人</option>
+                  <option value="3" ${tempTobiOut[i] === 3 ? 'selected' : ''}>3人</option>
+                </select>
+              </label>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      updatePointTotal();
+      document.getElementById('pointModal').classList.add('active');
+    }
+
+    function closePointModal() {
+      document.getElementById('pointModal').classList.remove('active');
+      currentEditingHand = null;
+    }
+
+    function updateTempPoint(playerIndex, value) {
+      tempPoints[playerIndex] = value === '' ? null : parseInt(value, 10) || 0;
+      updatePointTotal();
+    }
+
+    function updateTempTobiIn(playerIndex, checked) {
+      tempTobiIn[playerIndex] = checked ? 1 : 0;
+    }
+
+    function updateTempTobiOut(playerIndex, value) {
+      tempTobiOut[playerIndex] = parseInt(value, 10) || 0;
+    }
+
+    function updatePointTotal() {
+      const total = tempPoints.reduce((a, p) => a + (parseInt(p, 10) || 0), 0);
+      const isValid = total === TOTAL_POINT;
+      const el = document.getElementById('pointTotal');
+      el.textContent = `合計: ${total.toLocaleString()}点`;
+      el.className = 'point-total ' + (isValid ? 'valid' : 'invalid');
+    }
+
+    function savePoints() {
+      if (currentEditingHand !== null) {
+        state.hands[currentEditingHand].points = [...tempPoints];
+        state.hands[currentEditingHand].tobiOut = [...tempTobiOut];
+        state.hands[currentEditingHand].tobiIn = [...tempTobiIn];
+        saveState();
+        render();
+      }
+      closePointModal();
+    }
+
+    // =============== Seat Modal ===============
+    function openSeatModal(blockIndex) {
+      currentEditingBlock = blockIndex;
+      tempSeats = [...(state.seatBlocks[blockIndex] || [0, 1, 2, 3])];
+
+      const startHand = blockIndex * 4 + 1;
+      const endHand = Math.min((blockIndex + 1) * 4, state.handCount);
+      document.getElementById('seatModalTitle').textContent = `ブロック${blockIndex + 1}（${startHand}〜${endHand}半荘）`;
+
+      renderSeatInputs();
+      document.getElementById('seatModal').classList.add('active');
+    }
+
+    function closeSeatModal() {
+      document.getElementById('seatModal').classList.remove('active');
+      currentEditingBlock = null;
+    }
+
+    function renderSeatInputs() {
+      const container = document.getElementById('seatInputs');
+      container.innerHTML = WINDS.map((w, wi) => `
+        <div class="seat-input-group">
+          <div class="seat-input-row">
+            <span class="seat-wind">${w}</span>
+            <select class="seat-select" id="seatSelect${wi}" onchange="updateTempSeat(${wi}, this.value)">
+              ${state.names.map((n, ni) => `
+                <option value="${ni}" ${tempSeats[wi] === ni ? 'selected' : ''}>${n}</option>
+              `).join('')}
+            </select>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function updateTempSeat(windIndex, playerIndex) {
+      tempSeats[windIndex] = parseInt(playerIndex, 10);
+    }
+
+    function saveSeats() {
+      if (currentEditingBlock !== null) {
+        state.seatBlocks[currentEditingBlock] = [...tempSeats];
+        saveState();
+        render();
+      }
+      closeSeatModal();
+    }
+
+    // =============== Event Handlers ===============
+    function updateName(index, value) {
+      state.names[index] = value || DEFAULT_NAMES[index];
+      saveState();
+      render();
+    }
+
+    function setHandCount(count) {
+      state.handCount = count;
+      ensureDataStructure();
+      saveState();
+      render();
+    }
+
+    function updateChip(playerIndex, value) {
+      state.chips[playerIndex] = parseInt(value, 10) || CHIP_START;
+      saveState();
+      render();
+    }
+
+    function startNewDay() {
+      if (!confirm('半荘データとチップをリセット。名前は保持。OK？')) return;
+      state.hands = [];
+      state.seatBlocks = [];
+      state.chips = [CHIP_START, CHIP_START, CHIP_START, CHIP_START];
+      ensureDataStructure();
+      saveState();
+      render();
+    }
+
+    function fullReset() {
+      if (!confirm('全データ削除。本当にOK？')) return;
+      localStorage.removeItem('mahjongSettlement');
+      state = {
+        names: [...DEFAULT_NAMES],
+        handCount: 8,
+        hands: [],
+        seatBlocks: [],
+        chips: [CHIP_START, CHIP_START, CHIP_START, CHIP_START]
+      };
+      ensureDataStructure();
+      render();
+    }
+
+    // =============== Utilities ===============
+    function formatYen(value) {
+      const v = Math.round(value);
+      if (v === 0) return '±0円';
+      return (v > 0 ? '+' : '') + v.toLocaleString() + '円';
+    }
+
+    function formatYenShort(value) {
+      const v = Math.round(value);
+      if (v === 0) return '±0';
+      return (v > 0 ? '+' : '') + v.toLocaleString();
+    }
+
+    function formatClass(value) {
+      if (value > 0) return 'positive';
+      if (value < 0) return 'negative';
+      return 'zero';
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // =============== Init ===============
+    function init() {
+      loadState();
+
+      // 名前入力イベント
+      for (let i = 0; i < 4; i++) {
+        const input = document.getElementById(`name${i}`);
+        input.addEventListener('change', (e) => updateName(i, e.target.value));
+      }
+
+      // 半荘数変更イベント
+      document.getElementById('handCountSelect').addEventListener('change', (e) => {
+        setHandCount(parseInt(e.target.value, 10));
+      });
+
+      // モーダル外タップで閉じる
+      document.getElementById('pointModal').addEventListener('click', (e) => {
+        if (e.target.classList.contains('modal-overlay')) closePointModal();
+      });
+      document.getElementById('seatModal').addEventListener('click', (e) => {
+        if (e.target.classList.contains('modal-overlay')) closeSeatModal();
+      });
+
+      render();
+    }
+
+    init();
+  </script>
+</body>
+</html>
